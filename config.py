@@ -1,0 +1,3 @@
+token = "8368585623:AAH_PgkkSiuwv41SLseTre7AVHyUcAe-Ulo"
+ADMINS = []
+ADMIN_ID = 7718368607

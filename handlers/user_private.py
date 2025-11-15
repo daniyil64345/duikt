@@ -1,4 +1,5 @@
 
+
 from aiogram import Router, F, types , Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
@@ -180,15 +181,16 @@ async def dostavka(callback: CallbackQuery, state: FSMContext):
 @user_router.message(BuyProduct.number_of_room)
 async def get_roon(message: Message, state: FSMContext):
     await state.update_data(number_of_room = message.text)
-    fake_callback = types.CallbackQuery(
-        id="0",
-        from_user=message.from_user,
-        chat_instance="",
-        message=message,
-        data="sam_reshu"
+    choicee = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text = "Так , підтверджую інформацію", callback_data="prinesite_tovar_pz"),
+                InlineKeyboardButton(text = "Ні , увести заново", callback_data="prinesite"),
+            ]
+        ]
     )
-    await show_cart(fake_callback, state, message.bot)
-    await state.clear()
+    await message.answer("Чи підтверджуєте ви інформацію?", reply_markup=choicee)
+    
 
 
 @user_router.callback_query(F.data == "sam_reshu")
@@ -212,11 +214,56 @@ async def show_cart(callback: CallbackQuery, state: FSMContext, bot: Bot):
     text_admin = "🧾 <b>Ваш чек:</b>\n\n" + "\n".join(
     [f"{i+1}. {item['name']} — {item['price']} грн.\nКількість товару: {item['quantity']-1}" 
      for i, item in enumerate(cart)]
-    ) + f"\n\n💰 Разом: {total} грн\nКімната: {number_of_room or 'Самовивіз'}"
+    ) + f"\n\n💰 Разом: {total} грн\nКімната: {'Самовивіз'}"
 
     await callback.message.answer(text, parse_mode="HTML")
     await callback.message.answer(
-    "Ваш чек надійшов адміністратору. Якщо ви замовили доставку — очікуйте на представника нашого магазину. Якщо самовивіз — підходьте до кімнати 21/1"
+    "Ваш чек надійшов адміністратору. Підходьте до кімнати 21/1"
+)
+
+    for admin_id in ADMINS:
+        try:
+            await bot.send_message(
+                admin_id,
+                f"🧾 Нове замовлення від @{callback.from_user.username or 'користувача'}:\n\n{text_admin}",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            # Якщо адмін не запустив бота - пропускаємо
+            print(f"⚠️ Не вдалось відправити адміну {admin_id}: {e}")
+            continue
+    await state.update_data(cart=[])
+
+
+@user_router.callback_query(F.data == "prinesite_tovar_pz")
+async def show_cart_pz(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    number_of_room = data.get("number_of_room")
+    cart = data.get("cart", [])
+
+    if not cart:
+        await callback.message.answer("Ваш кошик наразі порожній")
+        return
+
+    total = sum(int(item["price"]) for item in cart)
+    text = "🧾 <b>Ваш чек:</b>\n\n" + "\n".join(
+        [f"{i+1}. {item['name']} — {item['price']} грн. За доставку + 10 гривень " for i, item in enumerate(cart)]
+    ) + f"\n\n💰 Разом: {total+10} грн"
+
+    for item in cart:
+        await buy(item["category"], item["id"])
+    
+    text_admin = "🧾 <b>Ваш чек:</b>\n\n" + "\n".join(
+    [f"{i+1}. {item['name']} — {item['price']} грн.\nКількість товару: {item['quantity']-1}" 
+     for i, item in enumerate(cart)]
+    ) + f"\n\n💰 Разом: {total} грн\nКімната: {number_of_room}"
+
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.message.answer(
+    "Ваш чек надійшов адміністратору. Спочатку оплатіть товар за реквізитами\n" 
+    "Картки:\nПриват- 5169360027385685\n"
+    "Моно- 4874070050925773\n"
+    "Після оплати очікуйте на доставку до вашої кімнати"
 )
 
     for admin_id in ADMINS:
@@ -231,6 +278,7 @@ async def show_cart(callback: CallbackQuery, state: FSMContext, bot: Bot):
             print(f"⚠️ Не вдалось відправити адміну {admin_id}: {e}")
             continue
 
+    await state.clear()
 
 # --------------------------- ПОВЕРНЕННЯ ---------------------------
 @user_router.callback_query(F.data == "return_menu")

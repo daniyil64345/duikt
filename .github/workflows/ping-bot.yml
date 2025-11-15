@@ -1,0 +1,72 @@
+name: 🤖 Keep Bot Alive
+
+on:
+  schedule:
+    # Запуск кожні 5 хвилин
+    - cron: '*/5 * * * *'
+  
+  workflow_dispatch: # Можливість запустити вручну через UI
+  
+  push:
+    branches: [ main ]  # Тестовий запуск при push
+
+jobs:
+  ping-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔍 Ping Replit Bot
+        id: ping
+        run: |
+          echo "🔄 Початок перевірки бота..."
+          echo "⏰ Час: $(date)"
+          echo "🌐 URL: ${{ secrets.REPLIT_URL }}"
+          
+          # Пінг з timeout 30 секунд
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
+          
+          echo "📊 HTTP статус: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Бот працює нормально!"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Бот не відповідає! Код: $HTTP_CODE"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 📱 Надіслати Telegram сповіщення (якщо помилка)
+        if: steps.ping.outputs.status == 'failed'
+        run: |
+          MESSAGE="🔴 УВАГА! Бот магазину не працює!%0A%0A"
+          MESSAGE="${MESSAGE}📊 HTTP статус: ${{ steps.ping.outputs.http_code }}%0A"
+          MESSAGE="${MESSAGE}⏰ Час: $(date +'%Y-%m-%d %H:%M:%S')%0A"
+          MESSAGE="${MESSAGE}🔗 URL: ${{ secrets.REPLIT_URL }}%0A%0A"
+          MESSAGE="${MESSAGE}👉 Відкрийте Replit і перезапустіть бота!"
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=$MESSAGE" \
+            -d "parse_mode=HTML"
+      
+      - name: ⏳ Повторна спроба через 30 секунд (якщо помилка)
+        if: steps.ping.outputs.status == 'failed'
+        run: |
+          echo "⏳ Чекаємо 30 секунд перед повторною спробою..."
+          sleep 30
+          
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Бот відновився після повторної спроби!"
+            
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d "text=✅ Бот відновлено! Працює нормально." \
+              -d "parse_mode=HTML"
+          else
+            echo "❌ Бот все ще не працює. Код: $HTTP_CODE"
+            exit 1
+          fi
+```

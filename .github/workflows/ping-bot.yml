@@ -69,4 +69,3 @@ jobs:
             echo "❌ Бот все ще не працює. Код: $HTTP_CODE"
             exit 1
           fi
-```

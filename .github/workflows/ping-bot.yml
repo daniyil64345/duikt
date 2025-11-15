@@ -20,7 +20,10 @@ jobs:
           echo "🌐 URL: ${{ secrets.REPLIT_URL }}"
 
           # Перший пінг
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health")
+          if [ -z "$HTTP_CODE" ]; then
+            HTTP_CODE="000"
+          fi
           echo "📊 HTTP статус: $HTTP_CODE"
 
           if [ "$HTTP_CODE" = "200" ]; then
@@ -30,15 +33,19 @@ jobs:
             echo "❌ Бот не відповідає! Код: $HTTP_CODE"
             echo "status=failed" >> $GITHUB_OUTPUT
             echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          fi
 
-      - name: ⏳ Повторна спроба через 30 секунд (якщо помилка)
+      - name: ⏳ Повторна спроба через 30 секунд (якщо перший пінг не вдався)
         if: steps.ping.outputs.status == 'failed'
         id: retry
         run: |
           echo "⏳ Чекаємо 30 секунд перед повторною спробою..."
           sleep 30
 
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health")
+          if [ -z "$HTTP_CODE" ]; then
+            HTTP_CODE="000"
+          fi
           echo "📊 HTTP статус повторної спроби: $HTTP_CODE"
 
           if [ "$HTTP_CODE" = "200" ]; then
@@ -49,13 +56,18 @@ jobs:
             echo "status=failed" >> $GITHUB_OUTPUT
             echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
             exit 1
+          fi
 
       - name: 📱 Надіслати Telegram повідомлення при падінні
         if: steps.retry.outputs.status == 'failed' || steps.ping.outputs.status == 'failed'
-        id: notify-failed
         run: |
           MESSAGE="🔴 УВАГА! Бот не відповідає!%0A"
-          MESSAGE="${MESSAGE}📊 HTTP статус: ${{ steps.retry.outputs.http_code || steps.ping.outputs.http_code }}%0A"
+          if [ -n "${{ steps.retry.outputs.http_code }}" ]; then
+            HTTP=${{ steps.retry.outputs.http_code }}
+          else
+            HTTP=${{ steps.ping.outputs.http_code }}
+          fi
+          MESSAGE="${MESSAGE}📊 HTTP статус: $HTTP%0A"
           MESSAGE="${MESSAGE}⏰ Час: $(date +'%Y-%m-%d %H:%M:%S')%0A"
           MESSAGE="${MESSAGE}🔗 URL: ${{ secrets.REPLIT_URL }}"
 

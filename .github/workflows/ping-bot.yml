@@ -1,71 +1,56 @@
-name: 🤖 Keep Bot Alive
+name: 🚀 Bot Monitor & Keep Alive
 
 on:
   schedule:
-    # Запуск кожні 5 хвилин
-    - cron: '*/5 * * * *'
-  
-  workflow_dispatch: # Можливість запустити вручну через UI
-  
-  push:
-    branches: [ main ]  # Тестовий запуск при push
+    - cron: '*/10 * * * *'  # Кожні 10 хвилин
+  workflow_dispatch:
 
 jobs:
-  ping-bot:
+  monitor:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: 🔍 Ping Replit Bot
-        id: ping
+      - name: 🔍 Check & Ping Bot
+        id: check
         run: |
-          echo "🔄 Початок перевірки бота..."
-          echo "⏰ Час: $(date)"
-          echo "🌐 URL: ${{ secrets.REPLIT_URL }}"
+          BOT_URL="https://your-service.onrender.com/health"
           
-          # Пінг з timeout 30 секунд
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
+          # Пінгуємо
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BOT_URL" || echo "000")
           
-          echo "📊 HTTP статус: $HTTP_CODE"
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Бот працює нормально!"
-            echo "status=success" >> $GITHUB_OUTPUT
+          # Результат
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "result=✅ Працює" >> $GITHUB_OUTPUT
           else
-            echo "❌ Бот не відповідає! Код: $HTTP_CODE"
-            echo "status=failed" >> $GITHUB_OUTPUT
-            echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+            echo "result=🔴 НЕ ПРАЦЮЄ" >> $GITHUB_OUTPUT
           fi
-      
-      - name: 📱 Надіслати Telegram сповіщення (якщо помилка)
-        if: steps.ping.outputs.status == 'failed'
+
+      - name: 📤 Send Telegram Notification
         run: |
-          MESSAGE="🔴 УВАГА! Бот магазину не працює!%0A%0A"
-          MESSAGE="${MESSAGE}📊 HTTP статус: ${{ steps.ping.outputs.http_code }}%0A"
-          MESSAGE="${MESSAGE}⏰ Час: $(date +'%Y-%m-%d %H:%M:%S')%0A"
-          MESSAGE="${MESSAGE}🔗 URL: ${{ secrets.REPLIT_URL }}%0A%0A"
-          MESSAGE="${MESSAGE}👉 Відкрийте Replit і перезапустіть бота!"
+          TELEGRAM_BOT_TOKEN="${{ secrets.MONITOR_BOT_TOKEN }}"
+          CHAT_ID="${{ secrets.ADMIN_CHAT_ID }}"
           
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=$MESSAGE" \
-            -d "parse_mode=HTML"
-      
-      - name: ⏳ Повторна спроба через 30 секунд (якщо помилка)
-        if: steps.ping.outputs.status == 'failed'
-        run: |
-          echo "⏳ Чекаємо 30 секунд перед повторною спробою..."
-          sleep 30
-          
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.REPLIT_URL }}/health" || echo "000")
-          
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Бот відновився після повторної спроби!"
-            
-            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-              -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-              -d "text=✅ Бот відновлено! Працює нормально." \
-              -d "parse_mode=HTML"
+          # Формуємо повідомлення
+          if [ "${{ steps.check.outputs.status }}" = "200" ]; then
+            EMOJI="✅"
+            STATUS_TEXT="Бот працює нормально"
           else
-            echo "❌ Бот все ще не працює. Код: $HTTP_CODE"
-            exit 1
+            EMOJI="🔴"
+            STATUS_TEXT="УВАГА! Бот магазину не працює!"
+          fi
+          
+          MESSAGE="${EMOJI} ${STATUS_TEXT}
+          📊 HTTP статус: ${{ steps.check.outputs.status }}
+          ⏰ Час: ${{ steps.check.outputs.timestamp }}
+          🔗 URL: https://your-service.onrender.com
+          
+          Результат: ${{ steps.check.outputs.result }}"
+          
+          # Відправляємо тільки якщо бот не працює
+          if [ "${{ steps.check.outputs.status }}" != "200" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d chat_id="${CHAT_ID}" \
+              -d text="${MESSAGE}"
           fi

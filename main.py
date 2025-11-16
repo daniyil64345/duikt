@@ -1,79 +1,47 @@
 import asyncio
 import os
 from datetime import datetime
-
 from aiogram import Bot, Dispatcher, types
 from aiohttp import web
 from dotenv import load_dotenv
-
 from handlers.user_private import user_router
 from handlers.admin_private import admin_private_router
 from common.bot_comands_list import private
 from bot_main import TOKEN
 
-# ===============================
-# ✅ Завантаження env
-# ===============================
 load_dotenv()
 
 if not TOKEN:
     raise ValueError("❌ Не знайдено токен!")
 
 # ===============================
-# 🌐 Веб-сервер
+# 🌐 Мінімальний health check
 # ===============================
-
-async def handle_root(request):
-    """Головна сторінка"""
-    uptime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html = f"""
-    <html>
-    <head><title>Bot Status</title></head>
-    <body>
-        <h1>✅ Bot is Running!</h1>
-        <p>⏰ Time: {uptime}</p>
-    </body>
-    </html>
-    """
-    return web.Response(text=html, content_type='text/html')
-
 async def handle_health(request):
-    """Health check endpoint"""
+    """Health check для моніторингу"""
     return web.json_response({
-        "status": "ok",
+        "status": "alive",
         "bot": "running",
         "timestamp": datetime.now().isoformat()
     })
 
-async def handle_ping(request):
-    """Ping endpoint"""
-    return web.Response(text="pong")
-
 async def start_web_server():
-    """Запуск веб-сервера"""
+    """Запуск health check сервера"""
     app = web.Application()
-    app.router.add_get("/", handle_root)
+    app.router.add_get("/", handle_health)
     app.router.add_get("/health", handle_health)
-    app.router.add_get("/ping", handle_ping)
-
+    
     runner = web.AppRunner(app)
     await runner.setup()
-
-    # Використовуємо порт з Replit
-    port = int(os.environ.get("PORT", 8080))
+    
+    port = int(os.environ.get("PORT", 10000))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-
-    # Виводимо правильний URL для keepalive
-    repl_slug = os.environ.get("REPL_SLUG", "workspace")
-    repl_owner = os.environ.get("REPL_OWNER", "elpepe228")
-    print(f"🌐 Веб-сервер запущено на порту {port}")
-    print(f"📍 Keepalive URL: https://{repl_slug}.{repl_owner}.repl.co")
+    print(f"🌐 Health check: http://0.0.0.0:{port}/health")
 
 # ===============================
 # 🤖 Telegram бот
 # ===============================
-
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
@@ -85,26 +53,30 @@ ALLOWED_UPDATES = ["message", "callback_query", "edited_message", "inline_query"
 async def on_startup():
     print("="*50)
     print("🚀 Запуск бота...")
+    
+    # ⚠️ КРИТИЧНО: Видаляємо webhook перед polling
+    await bot.delete_webhook(drop_pending_updates=True)
+    
     await bot.set_my_commands(private, scope=types.BotCommandScopeAllPrivateChats())
+    print("✅ Webhook видалено")
     print("✅ Команди встановлено")
-    print("✅ Бот готовий до роботи!")
+    print("✅ Бот готовий!")
     print("="*50)
 
 async def on_shutdown():
     print("\n🛑 Зупинка бота...")
     await bot.session.close()
-    print("👋 До побачення!")
 
 async def start_bot():
     await on_startup()
     try:
-        await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES, drop_pending_updates=True)
+        await dp.start_polling(
+            bot, 
+            allowed_updates=ALLOWED_UPDATES,
+            drop_pending_updates=True
+        )
     finally:
         await on_shutdown()
-
-# ===============================
-# 🔗 Головна функція
-# ===============================
 
 async def main():
     await asyncio.gather(

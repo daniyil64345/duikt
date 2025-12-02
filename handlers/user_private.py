@@ -298,7 +298,6 @@ async def contact_info(message: Message):
     await message.answer(
         "<b>Власник магазину:</b> @Duikt_market\n"
         "<b>Кімната:</b> 21:1\n"
-        "<b>Технічні проблеми з ботом:</b> @floxyz",
         parse_mode="HTML"
     )
 
@@ -312,7 +311,7 @@ async def help_command(message: Message):
     await message.answer(
         "<b>Власник магазину:</b> @Duikt_market\n"
         "<b>Кімната:</b> 21:1\n"
-        "<b>Технічні проблеми з ботом:</b> @floxyz",
+        
         parse_mode="HTML"
     )
 

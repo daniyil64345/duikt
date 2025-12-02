@@ -23,7 +23,6 @@ if not TOKEN:
 # 🌐 Веб-сервер
 # ===============================
 async def handle_root(request):
-    """Головна сторінка"""
     uptime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     html = f"""
     <html>
@@ -37,7 +36,6 @@ async def handle_root(request):
     return web.Response(text=html, content_type='text/html')
 
 async def handle_health(request):
-    """Health check endpoint"""
     return web.json_response({
         "status": "ok",
         "bot": "running",
@@ -45,11 +43,9 @@ async def handle_health(request):
     })
 
 async def handle_ping(request):
-    """Ping endpoint"""
     return web.Response(text="pong")
 
 async def start_web_server():
-    """Запуск веб-сервера"""
     app = web.Application()
     app.router.add_get("/", handle_root)
     app.router.add_get("/health", handle_health)
@@ -103,14 +99,18 @@ async def start_bot():
 # ===============================
 async def main():
     """Запуск веб-сервера і бота паралельно"""
-    await asyncio.gather(
-        start_web_server(),
-        start_bot()
-    )
+    web_task = asyncio.create_task(start_web_server())
+    bot_task = asyncio.create_task(start_bot())
+    await asyncio.gather(web_task, bot_task)
 
+# ===============================
+# 🔹 Запуск через явний event loop
+# ===============================
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        loop = asyncio.new_event_loop()       # створюємо новий event loop
+        asyncio.set_event_loop(loop)          # встановлюємо його як поточний
+        loop.run_until_complete(main())       # запускаємо основну функцію
     except KeyboardInterrupt:
         print("\n🛑 Зупинено користувачем")
     except Exception as e:

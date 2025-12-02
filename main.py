@@ -66,15 +66,9 @@ async def start_web_server():
 # ===============================
 # 🤖 Telegram бот
 # ===============================
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
-
-dp.include_router(user_router)
-dp.include_router(admin_private_router)
-
 ALLOWED_UPDATES = ["message", "callback_query", "edited_message", "inline_query"]
 
-async def on_startup():
+async def on_startup(bot: Bot):
     print("="*50)
     print("🚀 Запуск бота...")
     await bot.set_my_commands(private, scope=types.BotCommandScopeAllPrivateChats())
@@ -82,25 +76,31 @@ async def on_startup():
     print("✅ Бот готовий до роботи!")
     print("="*50)
 
-async def on_shutdown():
+async def on_shutdown(bot: Bot):
     print("\n🛑 Зупинка бота...")
     await bot.session.close()
     print("👋 До побачення!")
 
-async def start_bot():
-    await on_startup()
+async def start_bot(bot: Bot, dp: Dispatcher):
+    await on_startup(bot)
     try:
         await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES, drop_pending_updates=True)
     finally:
-        await on_shutdown()
+        await on_shutdown(bot)
 
 # ===============================
 # 🔗 Головна функція
 # ===============================
 async def main():
-    """Запуск веб-сервера і бота паралельно"""
+    # Створюємо бот і диспетчер всередині loop
+    bot = Bot(token=TOKEN)
+    dp = Dispatcher()
+    dp.include_router(user_router)
+    dp.include_router(admin_private_router)
+
+    # Паралельний запуск веб-сервера і бота
     web_task = asyncio.create_task(start_web_server())
-    bot_task = asyncio.create_task(start_bot())
+    bot_task = asyncio.create_task(start_bot(bot, dp))
     await asyncio.gather(web_task, bot_task)
 
 # ===============================
@@ -108,11 +108,13 @@ async def main():
 # ===============================
 if __name__ == "__main__":
     try:
-        loop = asyncio.new_event_loop()       # створюємо новий event loop
-        asyncio.set_event_loop(loop)          # встановлюємо його як поточний
-        loop.run_until_complete(main())       # запускаємо основну функцію
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("\n🛑 Зупинено користувачем")
     except Exception as e:
         print(f"\n❌ Помилка: {e}")
         raise
+
+

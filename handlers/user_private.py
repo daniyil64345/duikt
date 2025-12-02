@@ -247,8 +247,8 @@ async def show_cart_pz(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
     total = sum(int(item["price"]) for item in cart)
     text = "🧾 <b>Ваш чек:</b>\n\n" + "\n".join(
-        [f"{i+1}. {item['name']} — {item['price']} грн. За доставку + 10 гривень " for i, item in enumerate(cart)]
-    ) + f"\n\n💰 Разом: {total+10} грн"
+        [f"{i+1}. {item['name']} — {item['price']} грн." for i, item in enumerate(cart)]
+    ) + f"\n\n💰 Разом: {total+10} грн. +10 гривень за доставку"
 
     for item in cart:
         await buy(item["category"], item["id"])

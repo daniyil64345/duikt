@@ -307,6 +307,15 @@ async def help_command(message: Message):
     await message.answer("Якщо у вас виникли проблеми, можна зробити замовлення напряму і підійти до кімнати 21/1.")
 
 
+@user_router.message(Command("contact"))
+async def help_command(message: Message):
+    await message.answer(
+        "<b>Власник магазину:</b> @Duikt_market\n"
+        "<b>Кімната:</b> 21:1\n"
+        "<b>Технічні проблеми з ботом:</b> @floxyz",
+        parse_mode="HTML"
+    )
+
 # --------------------------- ПОВЕРНЕННЯ ДО МЕНЮ ---------------------------
 @user_router.message(F.text == "Назад до меню")
 async def back_to_menu(message: Message):

@@ -169,7 +169,7 @@ async def create_category(category: str):
     category = category.strip()
 
     # 2️⃣ Прибираємо тільки небезпечні спецсимволи, але ЗАЛИШАЄМО пробіли
-    category = re.sub(r'[^A-Za-zА-Яа-я0-9_ ]', '', category)
+    category = re.sub(r'[^\w\s]', '', category, flags=re.UNICODE)
     #                                      ❗️ Додав пробіл у дозволені символи
 
     # 3️⃣ Заміняємо множинні пробіли на один

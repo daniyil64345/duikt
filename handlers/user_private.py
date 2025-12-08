@@ -97,10 +97,21 @@ async def choose_category(callback: CallbackQuery, state: FSMContext):
 
 
 # --------------------------- ТОВАР ---------------------------
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram import F
+from aiogram.fsm.context import FSMContext
+
+# --------------------------- ВИБІР ТОВАРУ ---------------------------
 @user_router.callback_query(F.data.startswith("product_"))
 async def choose_product(callback: CallbackQuery, state: FSMContext):
-    _, category, product_id = callback.data.split("_")
-    product_id = int(product_id)
+    await callback.answer()  # Завжди відповідаємо на callback
+
+    try:
+        _, category, product_id = callback.data.split("_")
+        product_id = int(product_id)
+    except ValueError:
+        await callback.answer("❌ Помилка у даних товару.", show_alert=True)
+        return
 
     products = await show_something(category)
     selected = next((p for p in products if p[0] == product_id), None)
@@ -110,6 +121,8 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
         return
 
     row_id, name, price, photo, quantity = selected
+
+    # Зберігаємо вибраний товар у state
     await state.update_data(selected_product={
         "id": row_id,
         "name": name,
@@ -118,11 +131,18 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
         "quantity": quantity
     })
 
+    # Формуємо inline клавіатуру для підтвердження
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Додати до кошика", callback_data=f"shopify|yes|{category}|{row_id}"),
-                InlineKeyboardButton(text="Ні, скасувати", callback_data="noooo")
+                InlineKeyboardButton(
+                    text="Додати до кошика",
+                    callback_data=f"shopify|yes|{category}|{row_id}"
+                ),
+                InlineKeyboardButton(
+                    text="Ні, скасувати",
+                    callback_data="noooo"
+                )
             ]
         ]
     )
@@ -137,29 +157,50 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
 # --------------------------- ДОБАВИТИ В КОШИК ---------------------------
 @user_router.callback_query(F.data.startswith("shopify"))
 async def process_add(callback: CallbackQuery, state: FSMContext):
-    _, answer, category, product_id = callback.data.split("|")
+    await callback.answer()  # Обов'язково
+
+    try:
+        _, answer, category, product_id = callback.data.split("|")
+        product_id = int(product_id)
+    except ValueError:
+        await callback.answer("❌ Помилка у даних.", show_alert=True)
+        return
+
     data = await state.get_data()
+    selected_product = data.get("selected_product")
+
+    if not selected_product:
+        await callback.answer("❌ Товар не вибрано.", show_alert=True)
+        return
+
     if answer == "yes":
         cart = data.get("cart", [])
-        cart.append(data.get("selected_product"))
+        cart.append(selected_product)
         await state.update_data(cart=cart)
+
+        # Клавіатура після додавання у кошик
         inline_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text="Сформувати чек", callback_data="show_cart"),
-                    InlineKeyboardButton(text="Ще вибираю", callback_data="")
+                    InlineKeyboardButton(text="Ще вибираю", callback_data="wait")
                 ]
             ]
         )
         await callback.message.answer("✅ Товар додано до кошика.", reply_markup=inline_kb)
     else:
-        await callback.message.answer("Товар не додано.", reply_markup=InlineKeyboardMarkup(
+        # Кнопка скасування
+        inline_kb = InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="Повернутись до категорій", callback_data="wait")]]
-        ))
+        )
+        await callback.message.answer("❌ Товар не додано.", reply_markup=inline_kb)
 
 
+# --------------------------- СКАСУВАННЯ ВИБОРУ ---------------------------
 @user_router.callback_query(F.data.startswith("noooo"))
 async def cancel_selection(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
     data = await state.get_data()
     category = data.get("selected_product", {}).get("category")
 
@@ -167,23 +208,27 @@ async def cancel_selection(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Категорія не знайдена.", show_alert=True)
         return
 
-    # Отримуємо всі товари категорії
     products = await show_something(category)
     if not products:
         await callback.message.answer("У цій категорії немає товарів.")
         return
 
-    # Формуємо inline клавіатуру для товарів
+    # Формуємо клавіатуру для товарів + кнопка повернення
     keyboard = []
     for prod in products:
         row_id, name, price, photo, quantity = prod
-        keyboard.append([InlineKeyboardButton(
-            text=f"{name} - {price} грн",
-            callback_data=f"product_{category}_{row_id}"
-        )])
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{name} - {price} грн",
+                callback_data=f"product_{category}_{row_id}"
+            )
+        ])
 
+    keyboard.append([InlineKeyboardButton(text="Повернутись до категорій", callback_data="return_categories")])
     inline_kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
     await callback.message.answer(f"Категорія: {category}", reply_markup=inline_kb)
+
 
 # --------------------------- ПОКАЗ ЧЕКА ---------------------------
 @user_router.callback_query(F.data == "show_cart")

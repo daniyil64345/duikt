@@ -122,7 +122,7 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="Додати до кошика", callback_data=f"shopify|yes|{category}|{row_id}"),
-                InlineKeyboardButton(text="Ні, скасувати", callback_data="wait")
+                InlineKeyboardButton(text="Ні, скасувати", callback_data="noooo")
             ]
         ]
     )
@@ -147,7 +147,7 @@ async def process_add(callback: CallbackQuery, state: FSMContext):
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text="Сформувати чек", callback_data="show_cart"),
-                    InlineKeyboardButton(text="Ще вибираю", callback_data="wait")
+                    InlineKeyboardButton(text="Ще вибираю", callback_data="")
                 ]
             ]
         )
@@ -157,6 +157,33 @@ async def process_add(callback: CallbackQuery, state: FSMContext):
             inline_keyboard=[[InlineKeyboardButton(text="Повернутись до категорій", callback_data="wait")]]
         ))
 
+
+@user_router.callback_query(F.data.startswith("noooo"))
+async def cancel_selection(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    category = data.get("selected_product", {}).get("category")
+
+    if not category:
+        await callback.answer("❌ Категорія не знайдена.", show_alert=True)
+        return
+
+    # Отримуємо всі товари категорії
+    products = await show_something(category)
+    if not products:
+        await callback.message.answer("У цій категорії немає товарів.")
+        return
+
+    # Формуємо inline клавіатуру для товарів
+    keyboard = []
+    for prod in products:
+        row_id, name, price, photo, quantity = prod
+        keyboard.append([InlineKeyboardButton(
+            text=f"{name} - {price} грн",
+            callback_data=f"product_{category}_{row_id}"
+        )])
+
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    await callback.message.answer(f"Категорія: {category}", reply_markup=inline_kb)
 
 # --------------------------- ПОКАЗ ЧЕКА ---------------------------
 @user_router.callback_query(F.data == "show_cart")

@@ -131,13 +131,17 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
         "quantity": quantity
     })
 
+    # Очищаємо category і row_id для callback_data
+    safe_category = str(category).replace("\n", "").replace("|", "_").strip()
+    safe_row_id = str(row_id).strip()
+
     # Формуємо inline клавіатуру для підтвердження
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="Додати до кошика",
-                    callback_data=f"shopify|yes|{category}|{row_id}"
+                    callback_data=f"shopify|yes|{safe_category}|{safe_row_id}"
                 ),
                 InlineKeyboardButton(
                     text="Ні, скасувати",
@@ -217,10 +221,12 @@ async def cancel_selection(callback: CallbackQuery, state: FSMContext):
     keyboard = []
     for prod in products:
         row_id, name, price, photo, quantity = prod
+        safe_category = str(category).replace("\n", "").replace("|", "_").strip()
+        safe_row_id = str(row_id).strip()
         keyboard.append([
             InlineKeyboardButton(
                 text=f"{name} - {price} грн",
-                callback_data=f"product_{category}_{row_id}"
+                callback_data=f"product_{safe_category}_{safe_row_id}"
             )
         ])
 
@@ -228,6 +234,7 @@ async def cancel_selection(callback: CallbackQuery, state: FSMContext):
     inline_kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     await callback.message.answer(f"Категорія: {category}", reply_markup=inline_kb)
+
 
 
 # --------------------------- ПОКАЗ ЧЕКА ---------------------------

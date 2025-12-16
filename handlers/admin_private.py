@@ -612,3 +612,30 @@ async def update_product_info(message: Message, state: FSMContext):
     await message.answer(f"✅ Інформацію про товар <b>{product_name}</b> оновлено!", parse_mode="HTML")
     await state.clear()
     
+class ShopClosure(StatesGroup):
+    waiting_for_datetime = State()
+
+@admin_private_router.message(F.text == "Запланувати закриття магазину")
+async def schedule_closure(message: Message, state: FSMContext):
+    await message.answer(
+        "📅 Введіть дату та час, до якого магазин буде закритий.\n"
+        "Формат: ГГГГ-ММ-ДД ГГ:ХХ\n"
+        "Наприклад: 2025-12-15 21:10"
+    )
+    await state.set_state(ShopClosure.waiting_for_datetime)
+
+
+@admin_private_router.message(ShopClosure.waiting_for_datetime)
+async def schedule_closure_receive(message: Message, state: FSMContext):
+    try:
+        until_dt = datetime.datetime.strptime(message.text, "%Y-%m-%d %H:%M")
+    except ValueError:
+        await message.answer("❌ Невірний формат дати. Спробуйте ще раз.")
+        return
+
+    # Зберігаємо у БД
+    await schedule_shop_closure(until_dt)
+
+    await message.answer(f"✅ Магазин буде закритий до {until_dt.strftime('%Y-%m-%d %H:%M')}")
+    await state.clear()
+

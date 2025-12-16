@@ -252,3 +252,31 @@ async def get_all_categories():
 
         print(f"✅ Знайдено категорії: {categories}")  # Для перевірки
         return categories
+
+
+
+import aiosqlite
+from bot_main import DB_PATH
+
+async def schedule_shop_closure(until_datetime: datetime.datetime):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO shop_status (closed_until) VALUES (?)",
+            (until_datetime.isoformat(),)
+        )
+        await db.commit()
+
+
+async def is_shop_closed():
+    import datetime
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT closed_until FROM shop_status ORDER BY id DESC LIMIT 1"
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row and row["closed_until"]:
+                closed_until = datetime.datetime.fromisoformat(row["closed_until"])
+                if datetime.datetime.now() < closed_until:
+                    return True, closed_until
+    return False, None

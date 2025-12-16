@@ -398,3 +398,34 @@ async def help_command(message: Message):
 @user_router.message(F.text == "Назад до меню")
 async def back_to_menu(message: Message):
     await message.answer("Повертаємось назад до меню", reply_markup=navigation)
+
+
+
+
+
+
+
+@user_router.message()
+async def all_user_messages(message: Message):
+    # Перевіряємо, чи магазин закритий
+    closed, until = await is_shop_closed()
+    if closed:
+        await message.answer(
+            f"🛑 Магазин тимчасово не працює до {until.strftime('%Y-%m-%d %H:%M')}. "
+            "Будь ласка, зверніться пізніше."
+        )
+        return  # далі нічого не робимо
+
+    # Якщо магазин відкритий — обробляємо команди
+    if message.text and message.text.startswith("/"):
+        if message.text.lower() == "/start":
+            await message.answer("👋 Ласкаво просимо до магазину!")
+            return
+        elif message.text.lower() == "/help":
+            await message.answer("❓ Допомога: використовуйте кнопки або повідомлення для взаємодії.")
+            return
+        # Можна додати інші команди
+        return
+
+    # Звичайні повідомлення користувачів
+    await message.answer("📦 Це повідомлення користувача")

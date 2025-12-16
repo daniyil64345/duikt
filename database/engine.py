@@ -4,6 +4,7 @@ import aiogram
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import CallbackQuery
 from bot_main import DB_PATH
+import datetime
 
 
 async def test_db():

@@ -7,7 +7,7 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from filters.chat_types import ChatTypeFilter
 from keyboards.keyboard import navigation, del_kbd
-from database.engine import get_all_categories, show_something, buy
+from database.engine import get_all_categories, show_something, buy, is_shop_closed
 from bot_main import ADMINS
 
 user_router = Router()

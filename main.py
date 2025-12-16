@@ -95,8 +95,9 @@ async def main():
     # Створюємо бот і диспетчер всередині loop
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
-    dp.include_router(user_router)
+    
     dp.include_router(admin_private_router)
+    dp.include_router(user_router)
 
     # Паралельний запуск веб-сервера і бота
     web_task = asyncio.create_task(start_web_server())

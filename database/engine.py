@@ -305,16 +305,39 @@ async def is_shop_closed() -> bool:
 
 import aiosqlite
 
-DB_PATH = "db.sqlite"
 
-async def init_db():
+import aiosqlite
+from bot_main import DB_PATH
+
+async def init_db(clean: bool = True):
     async with aiosqlite.connect(DB_PATH) as db:
+
+        if clean:
+            # Видаляємо всі існуючі таблиці крім службових sqlite_*
+            async with db.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            """) as cursor:
+                tables = await cursor.fetchall()
+                for table in tables:
+                    await db.execute(f'DROP TABLE IF EXISTS "{table[0]}"')
+            print("✅ Старі таблиці видалено")
+
+        # ------------------------
+        # Таблиця статусу магазину
+        # ------------------------
         await db.execute("""
             CREATE TABLE IF NOT EXISTS shop_status (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                is_closed BOOLEAN NOT NULL DEFAULT 0,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
+                is_closed BOOLEAN NOT NULL
+            )
         """)
+
+        # Додаємо початковий запис (магазин відкритий)
+        await db.execute("DELETE FROM shop_status")
+        await db.execute("INSERT INTO shop_status (is_closed) VALUES (0)")
+
         await db.commit()
+    print("✅ База даних ініціалізована. Тепер можна додавати категорії через бот")
+
 

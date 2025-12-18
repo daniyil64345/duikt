@@ -620,24 +620,32 @@ class ShopClosure(StatesGroup):
 @admin_private_router.message(F.text == "Запланувати закриття магазину")
 async def schedule_closure(message: Message, state: FSMContext):
     await message.answer(
-        "📅 Введіть дату та час, до якого магазин буде закритий.\n"
-        "Формат: ГГГГ-ММ-ДД ГГ:ХХ\n"
-        "Наприклад: 2025-12-15 21:10"
+        "⏳ Введіть кількість годин, на які закрити магазин.\n"
+        "Наприклад: 3"
     )
     await state.set_state(ShopClosure.waiting_for_datetime)
+
 
 
 @admin_private_router.message(ShopClosure.waiting_for_datetime)
 async def schedule_closure_receive(message: Message, state: FSMContext):
     try:
-        until_dt = datetime.datetime.strptime(message.text, "%Y-%m-%d %H:%M")
+        hours = int(message.text)
+        if hours <= 0:
+            raise ValueError
     except ValueError:
-        await message.answer("❌ Невірний формат дати. Спробуйте ще раз.")
+        await message.answer("❌ Введіть коректну кількість годин (ціле число > 0).")
         return
 
-    # Зберігаємо у БД
-    await schedule_shop_closure(until_dt)
+    now = datetime.datetime.now()
+    closed_until = now + datetime.timedelta(hours=hours)
 
-    await message.answer(f"✅ Магазин буде закритий до {until_dt.strftime('%Y-%m-%d %H:%M')}")
+    await schedule_shop_closure(closed_until)
+
+    await message.answer(
+        f"✅ Магазин закрито на {hours} год.\n"
+        f"🕒 Відкриється: {closed_until.strftime('%Y-%m-%d %H:%M')}"
+    )
+
     await state.clear()
 

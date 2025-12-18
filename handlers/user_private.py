@@ -22,6 +22,13 @@ class BuyProduct(StatesGroup):
 # --------------------------- START ---------------------------
 @user_router.message(CommandStart())
 async def start_handler(message: Message):
+    closed = await is_shop_closed()
+    if closed:
+        await message.answer(
+            f"🛑 Магазин тимчасово не працює."
+        )
+        return
+
     await message.answer(
         "👋 Вітаємо в боті ДУІКТ МАРКЕТ!\n"
         "Тут можна переглядати товари та робити покупки.\n"
@@ -30,6 +37,13 @@ async def start_handler(message: Message):
 
 @user_router.message(Command("menu"))
 async def show_main_menu(message: Message):
+    closed = await is_shop_closed()
+    if closed:
+        await message.answer(
+            f"🛑 Магазин тимчасово не працює."
+        )
+        return
+
     await message.answer("Основне меню", reply_markup=navigation)
 
 
@@ -53,7 +67,13 @@ async def show_categories(callback: CallbackQuery, categories: list, to_menu: bo
 
 @user_router.message(F.text == "🛍 Переглянути товари")
 async def show_categories_from_message(message: Message, state: FSMContext):
-    
+    closed = await is_shop_closed()
+    if closed:
+        await message.answer(
+            f"🛑 Магазин тимчасово не працює."
+        )
+        return
+
     categories = await get_all_categories()
     print(f"Категорії: {categories}")
     print(f"Тип: {type(categories)}")
@@ -401,31 +421,15 @@ async def back_to_menu(message: Message):
 
 
 
-
-
-
-
 @user_router.message()
 async def all_user_messages(message: Message):
     # Перевіряємо, чи магазин закритий
-    closed, until = await is_shop_closed()
+    closed = await is_shop_closed()
     if closed:
         await message.answer(
-            f"🛑 Магазин тимчасово не працює до {until.strftime('%Y-%m-%d %H:%M')}. "
-            "Будь ласка, зверніться пізніше."
+            "🛑 Магазин тимчасово закрито. Будь ласка, зверніться пізніше."
         )
         return  # далі нічого не робимо
-
-    # Якщо магазин відкритий — обробляємо команди
-    if message.text and message.text.startswith("/"):
-        if message.text.lower() == "/start":
-            await message.answer("👋 Ласкаво просимо до магазину!")
-            return
-        elif message.text.lower() == "/help":
-            await message.answer("❓ Допомога: використовуйте кнопки або повідомлення для взаємодії.")
-            return
-        # Можна додати інші команди
-        return
 
     # Звичайні повідомлення користувачів
     await message.answer("📦 Це повідомлення користувача")

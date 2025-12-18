@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import datetime
-from datqabase.engine import init_db
+from database.engine import init_db
 from aiogram import Bot, Dispatcher, types
 from aiohttp import web
 from dotenv import load_dotenv

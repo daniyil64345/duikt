@@ -97,7 +97,7 @@ async def start_bot(bot: Bot, dp: Dispatcher):
 # 🔗 Головна функція
 # ===============================
 async def main():
-    asyncio.run(init_db())
+    await init_db()
 
     # Створюємо бот і диспетчер всередині loop
     bot = Bot(token=TOKEN)

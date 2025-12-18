@@ -257,35 +257,51 @@ async def get_all_categories():
 
 
 import aiosqlite
-from bot_main import DB_PATH
-import datetime
+from bot_main import DB_PATH  # твій шлях до бази
 
-async def schedule_shop_closure(until_datetime: datetime.datetime):
+# ------------------------
+# Створення таблиці (на старті)
+# ------------------------
+async def init_shop_status_table():
     async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DROP TABLE IF EXISTS shop_status")  # для тестів
+        await db.execute("""
+            CREATE TABLE shop_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                is_closed BOOLEAN NOT NULL
+            )
+        """)
+        await db.commit()
+    print("✅ Таблиця shop_status створена заново")
+
+
+# ------------------------
+# Закрити / Відкрити магазин
+# ------------------------
+async def set_shop_status(closed: bool):
+    async with aiosqlite.connect(DB_PATH) as db:
+        # залишаємо тільки останній запис
+        await db.execute("DELETE FROM shop_status")
         await db.execute(
-            "INSERT INTO shop_status (closed_until) VALUES (?)",
-            (until_datetime.isoformat(),)
+            "INSERT INTO shop_status (is_closed) VALUES (?)",
+            (int(closed),)
         )
         await db.commit()
 
 
-async def is_shop_closed():
-    import datetime
+# ------------------------
+# Перевірка статусу магазину
+# ------------------------
+async def is_shop_closed() -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT closed_until FROM shop_status ORDER BY id DESC LIMIT 1"
+            "SELECT is_closed FROM shop_status ORDER BY id DESC LIMIT 1"
         ) as cursor:
             row = await cursor.fetchone()
+            if row:
+                return bool(row["is_closed"])
+    return False
 
-            if not row or not row["closed_until"]:
-                return False, None
-
-            closed_until = datetime.datetime.fromisoformat(row["closed_until"])
-
-            if datetime.datetime.now() < closed_until:
-                return True, closed_until
-
-    return False, None
 
 

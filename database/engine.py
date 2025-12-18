@@ -258,6 +258,7 @@ async def get_all_categories():
 
 import aiosqlite
 from bot_main import DB_PATH
+import datetime
 
 async def schedule_shop_closure(until_datetime: datetime.datetime):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -276,8 +277,15 @@ async def is_shop_closed():
             "SELECT closed_until FROM shop_status ORDER BY id DESC LIMIT 1"
         ) as cursor:
             row = await cursor.fetchone()
-            if row and row["closed_until"]:
-                closed_until = datetime.datetime.fromisoformat(row["closed_until"])
-                if datetime.datetime.now() < closed_until:
-                    return True, closed_until
+
+            if not row or not row["closed_until"]:
+                return False, None
+
+            closed_until = datetime.datetime.fromisoformat(row["closed_until"])
+
+            if datetime.datetime.now() < closed_until:
+                return True, closed_until
+
     return False, None
+
+

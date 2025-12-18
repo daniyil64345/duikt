@@ -46,22 +46,27 @@ async def handle_ping(request):
     return web.Response(text="pong")
 
 async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_root)
-    app.router.add_get("/health", handle_health)
-    app.router.add_get("/ping", handle_ping)
+    try:
+        app = web.Application()
+        app.router.add_get("/", handle_root)
+        app.router.add_get("/health", handle_health)
+        app.router.add_get("/ping", handle_ping)
 
-    runner = web.AppRunner(app)
-    await runner.setup()
+        runner = web.AppRunner(app)
+        await runner.setup()
 
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
+        port = int(os.environ.get("PORT", 8080))
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
 
-    repl_slug = os.environ.get("REPL_SLUG", "workspace")
-    repl_owner = os.environ.get("REPL_OWNER", "owner")
-    print(f"🌐 Веб-сервер запущено на порту {port}")
-    print(f"📍 Keepalive URL: https://{repl_slug}.{repl_owner}.repl.co")
+        print(f"🌐 Веб-сервер запущено на порту {port}")
+
+    except OSError as e:
+        if e.errno == 98:
+            print("⚠️ Порт 8080 вже зайнятий — веб-сервер пропущено")
+        else:
+            raise
+
 
 # ===============================
 # 🤖 Telegram бот

@@ -303,5 +303,18 @@ async def is_shop_closed() -> bool:
                 return bool(row["is_closed"])
     return False
 
+import aiosqlite
 
+DB_PATH = "db.sqlite"
+
+async def init_db():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS shop_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                is_closed BOOLEAN NOT NULL DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        await db.commit()
 

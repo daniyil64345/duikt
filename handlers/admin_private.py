@@ -1,3 +1,4 @@
+
 from aiogram import F , Router , types
 import aiosqlite
 import base64
@@ -9,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from aiogram.filters import CommandStart
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from database.engine import delete, show_something, add_something, add_photo, create_category, get_all_categories, delete_category, schedule_shop_closure
+from database.engine import delete, show_something, add_something, add_photo, create_category, get_all_categories, delete_category, set_shop_status
 from keyboards.keyboard import meun , admin_menu, del_smth
 from aiogram import F
 from aiogram import Router, types
@@ -273,6 +274,7 @@ async def process_photo(message: types.Message , state: FSMContext):
 
     try:
         await add_something(data["category"], data)
+        
         await message.answer("✅ Товар успішно додано до бази даних.", reply_markup=admin_menu)
     except Exception as e:
         await message.answer(f"⚠️ Помилка при додаванні товару: {e}", reply_markup=admin_menu)
@@ -613,39 +615,15 @@ async def update_product_info(message: Message, state: FSMContext):
 
     await message.answer(f"✅ Інформацію про товар <b>{product_name}</b> оновлено!", parse_mode="HTML")
     await state.clear()
-    
-class ShopClosure(StatesGroup):
-    waiting_for_datetime = State()
-
-@admin_private_router.message(F.text == "Запланувати закриття магазину")
-async def schedule_closure(message: Message, state: FSMContext):
-    await message.answer(
-        "⏳ Введіть кількість годин, на які закрити магазин.\n"
-        "Наприклад: 3"
-    )
-    await state.set_state(ShopClosure.waiting_for_datetime)
 
 
 
-@admin_private_router.message(ShopClosure.waiting_for_datetime)
-async def schedule_closure_receive(message: Message, state: FSMContext):
-    try:
-        hours = int(message.text)
-        if hours <= 0:
-            raise ValueError
-    except ValueError:
-        await message.answer("❌ Введіть коректну кількість годин (ціле число > 0).")
-        return
+@admin_private_router.message(F.text == "Закрити магазин")
+async def close_shop(message: Message):
+    await set_shop_status(True)
+    await message.answer("✅ Магазин закрито.")
 
-    now = datetime.datetime.now()
-    closed_until = now + datetime.timedelta(hours=hours)
-
-    await schedule_shop_closure(closed_until)
-
-    await message.answer(
-        f"✅ Магазин закрито на {hours} год.\n"
-        f"🕒 Відкриється: {closed_until.strftime('%Y-%m-%d %H:%M')}"
-    )
-
-    await state.clear()
-
+@admin_private_router.message(F.text == "Відкрити магазин")
+async def open_shop(message: Message):
+    await set_shop_status(False)
+    await message.answer("✅ Магазин відкрито.")

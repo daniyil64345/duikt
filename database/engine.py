@@ -242,17 +242,17 @@ async def get_all_categories():
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute("""
             SELECT name FROM sqlite_master 
-            WHERE type = 'table' 
+            WHERE type = 'table'
             AND name NOT LIKE 'sqlite_%'
+            AND name NOT IN ('1', 'shop_status')
         """)
         rows = await cursor.fetchall()
 
-        # Виключаємо службові/зайві таблиці
-        exclude = []
-        categories = [row[0] for row in rows if row[0] not in exclude]
+        categories = [row[0] for row in rows]
 
-        print(f"✅ Знайдено категорії: {categories}")  # Для перевірки
+        print(f"✅ Знайдено категорії: {categories}")
         return categories
+
 
 
 

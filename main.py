@@ -11,17 +11,12 @@ from handlers.admin_private import admin_private_router
 from common.bot_comands_list import private
 from bot_main import TOKEN
 
-# ===============================
-# ✅ Завантаження env
-# ===============================
+
 load_dotenv()
 
 if not TOKEN:
     raise ValueError("❌ Не знайдено токен!")
 
-# ===============================
-# 🌐 Веб-сервер
-# ===============================
 async def handle_root(request):
     uptime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     html = f"""
@@ -67,10 +62,6 @@ async def start_web_server():
         else:
             raise
 
-
-# ===============================
-# 🤖 Telegram бот
-# ===============================
 ALLOWED_UPDATES = ["message", "callback_query", "edited_message", "inline_query"]
 
 async def on_startup(bot: Bot):
@@ -93,13 +84,9 @@ async def start_bot(bot: Bot, dp: Dispatcher):
     finally:
         await on_shutdown(bot)
 
-# ===============================
-# 🔗 Головна функція
-# ===============================
 async def main():
     await init_db()
 
-    # Створюємо бот і диспетчер всередині loop
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
     
@@ -111,9 +98,6 @@ async def main():
     bot_task = asyncio.create_task(start_bot(bot, dp))
     await asyncio.gather(web_task, bot_task)
 
-# ===============================
-# 🔹 Запуск через явний event loop
-# ===============================
 if __name__ == "__main__":
     try:
         loop = asyncio.new_event_loop()

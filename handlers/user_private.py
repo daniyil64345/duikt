@@ -124,7 +124,7 @@ from aiogram.fsm.context import FSMContext
 # --------------------------- ВИБІР ТОВАРУ ---------------------------
 @user_router.callback_query(F.data.startswith("product_"))
 async def choose_product(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()  # Завжди відповідаємо на callback
+    await callback.answer()  
 
     try:
         _, category, product_id = callback.data.split("_")
@@ -142,7 +142,6 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
 
     row_id, name, price, photo, quantity = selected
 
-    # Зберігаємо вибраний товар у state
     await state.update_data(selected_product={
         "id": row_id,
         "name": name,
@@ -151,11 +150,10 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
         "quantity": quantity
     })
 
-    # Очищаємо category і row_id для callback_data
     safe_category = str(category).replace("\n", "").replace("|", "_").strip()
     safe_row_id = str(row_id).strip()
 
-    # Формуємо inline клавіатуру для підтвердження
+    
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -181,8 +179,7 @@ async def choose_product(callback: CallbackQuery, state: FSMContext):
 # --------------------------- ДОБАВИТИ В КОШИК ---------------------------
 @user_router.callback_query(F.data.startswith("shopify"))
 async def process_add(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()  # Обов'язково
-
+    await callback.answer() 
     try:
         _, answer, category, product_id = callback.data.split("|")
         product_id = int(product_id)
@@ -202,7 +199,6 @@ async def process_add(callback: CallbackQuery, state: FSMContext):
         cart.append(selected_product)
         await state.update_data(cart=cart)
 
-        # Клавіатура після додавання у кошик
         inline_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -213,7 +209,7 @@ async def process_add(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.answer("✅ Товар додано до кошика.", reply_markup=inline_kb)
     else:
-        # Кнопка скасування
+
         inline_kb = InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="Повернутись до категорій", callback_data="wait")]]
         )
@@ -237,7 +233,6 @@ async def cancel_selection(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("У цій категорії немає товарів.")
         return
 
-    # Формуємо клавіатуру для товарів + кнопка повернення
     keyboard = []
     for prod in products:
         row_id, name, price, photo, quantity = prod
@@ -328,7 +323,7 @@ async def show_cart(callback: CallbackQuery, state: FSMContext, bot: Bot):
                 parse_mode="HTML"
             )
         except Exception as e:
-            # Якщо адмін не запустив бота - пропускаємо
+            
             print(f"⚠️ Не вдалось відправити адміну {admin_id}: {e}")
             continue
     await state.update_data(cart=[])
@@ -373,7 +368,7 @@ async def show_cart_pz(callback: CallbackQuery, state: FSMContext, bot: Bot):
                 parse_mode="HTML"
             )
         except Exception as e:
-            # Якщо адмін не запустив бота - пропускаємо
+
             print(f"⚠️ Не вдалось відправити адміну {admin_id}: {e}")
             continue
 
@@ -423,13 +418,12 @@ async def back_to_menu(message: Message):
 
 @user_router.message()
 async def all_user_messages(message: Message):
-    # Перевіряємо, чи магазин закритий
+
     closed = await is_shop_closed()
     if closed:
         await message.answer(
             "🛑 Магазин тимчасово закрито. Будь ласка, зверніться пізніше."
         )
-        return  # далі нічого не робимо
+        return  
 
-    # Звичайні повідомлення користувачів
     await message.answer("📦 Це повідомлення користувача")

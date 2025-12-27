@@ -24,7 +24,6 @@ async def list_db():
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        # Отримуємо список таблиць (виключаємо системні таблиці)
         async with db.execute("""
             SELECT name FROM sqlite_master 
             WHERE type='table' 
@@ -36,16 +35,15 @@ async def list_db():
         for table in tables:
             table_name = table[0]
 
-            # Додаємо rowid як окрему колонку з іменем
             async with db.execute(
                 f"SELECT rowid as id, * FROM '{table_name}'") as cursor2:
                 rows = await cursor2.fetchall()
                 products = []
                 for row in rows:
                     try:
-                        # Отримуємо id (rowid)
+                        
                         row_id = row["id"]
-                        # Перевіряємо наявність ключів
+                        
                         name = row[
                             "Назва товару"] if "Назва товару" in row.keys(
                             ) else "Немає назви"
@@ -123,9 +121,9 @@ async def add_something(category, data):
 
         await db.execute(
             f"INSERT INTO '{category}' ('Назва товару', 'Ціна', 'photo_id', 'Кількість') VALUES (?, ?, ?, ?)",
-            (name, price, image, quantity)  # ✅ Додай параметри!
+            (name, price, image, quantity) 
         )
-        await db.commit()  # ✅ Додай дужки!
+        await db.commit() 
 
 
 async def add_photo(data, image):
@@ -166,21 +164,16 @@ async def buy(category: str, id: int):
 
 
 async def create_category(category: str):
-    # 1️⃣ Прибираємо зайві пробіли з країв
+
     category = category.strip()
 
-    # 2️⃣ Прибираємо тільки небезпечні спецсимволи, але ЗАЛИШАЄМО пробіли
     category = re.sub(r'[^\w\s]', '', category, flags=re.UNICODE)
-    #                                      ❗️ Додав пробіл у дозволені символи
 
-    # 3️⃣ Заміняємо множинні пробіли на один
     category = re.sub(r'\s+', ' ', category)
 
-    # 4️⃣ Якщо після фільтрації залишилося пусто
     if not category:
         raise ValueError("Некоректна назва категорії!")
 
-    # 5️⃣ Перевіряємо зарезервовані SQL-слова
     forbidden = {
         "select", "from", "table", "insert", "delete", "update", "where",
         "join", "drop", "create"
@@ -189,7 +182,6 @@ async def create_category(category: str):
         raise ValueError(
             f"'{category}' — це зарезервоване слово SQL, обери іншу назву!")
 
-    # 6️⃣ Створюємо таблицю
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(f'''
             CREATE TABLE IF NOT EXISTS "{category}" (
@@ -206,7 +198,6 @@ async def create_category(category: str):
 async def delete_category(category: str):
     async with aiosqlite.connect(DB_PATH) as db:
 
-        # Перевіряємо чи існує таблиця
         cursor = await db.execute(
             """
             SELECT name FROM sqlite_master 
@@ -218,7 +209,6 @@ async def delete_category(category: str):
         if not exists:
             raise ValueError(f"Категорія '{category}' не існує!")
 
-        # Видаляємо таблицю
         await db.execute(f'DROP TABLE IF EXISTS "{category}"')
         await db.commit()
 
@@ -259,9 +249,6 @@ async def get_all_categories():
 import aiosqlite
 from bot_main import DB_PATH  # твій шлях до бази
 
-# ------------------------
-# Створення таблиці (на старті)
-# ------------------------
 async def init_shop_status_table():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DROP TABLE IF EXISTS shop_status")  # для тестів
@@ -275,12 +262,9 @@ async def init_shop_status_table():
     print("✅ Таблиця shop_status створена заново")
 
 
-# ------------------------
-# Закрити / Відкрити магазин
-# ------------------------
 async def set_shop_status(closed: bool):
     async with aiosqlite.connect(DB_PATH) as db:
-        # залишаємо тільки останній запис
+       
         await db.execute("DELETE FROM shop_status")
         await db.execute(
             "INSERT INTO shop_status (is_closed) VALUES (?)",
@@ -288,10 +272,6 @@ async def set_shop_status(closed: bool):
         )
         await db.commit()
 
-
-# ------------------------
-# Перевірка статусу магазину
-# ------------------------
 async def is_shop_closed() -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -307,12 +287,10 @@ import aiosqlite
 
 
 async def init_db():
-    """Ініціалізує базу даних без видалення старих таблиць."""
+
     async with aiosqlite.connect(DB_PATH) as db:
 
-        # ------------------------
-        # Таблиця статусу магазину
-        # ------------------------
+
         await db.execute("""
             CREATE TABLE IF NOT EXISTS shop_status (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -320,7 +298,6 @@ async def init_db():
             )
         """)
 
-        # Додаємо початковий запис, якщо таблиця порожня
         async with db.execute("SELECT COUNT(*) as count FROM shop_status") as cursor:
             row = await cursor.fetchone()
             if row[0] == 0:

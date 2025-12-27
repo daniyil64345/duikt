@@ -22,13 +22,10 @@ import asyncio
 
 admin_private_router = Router()
 
-# Фільтр для перевірки, чи користувач адмін
 class IsAdmin(BaseFilter):
     async def __call__(self, message: types.Message) -> bool:
         return message.from_user.id in ADMINS
 
-
-# Команда для додавання себе в адміни
 @admin_private_router.message(Command("makeadmin"))
 async def make_admin(message: Message):
     user_id = message.from_user.id
@@ -41,8 +38,6 @@ async def make_admin(message: Message):
     ADMINS.append(user_id)
     await message.answer(f"✅ @{username or 'Без_ніка'} тепер адміністратор!")
 
-
-# Стартова команда адмінки
 @admin_private_router.message(Command("adminmenu"), IsAdmin())
 async def start_admin_panel(message: Message):
     await message.answer(
@@ -395,7 +390,6 @@ async def process_add(callback: CallbackQuery, state: FSMContext):
 async def add_photo_now(message: Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
 
-    # Зберігаємо фото у FSMContext
     await state.update_data(product_photo=photo_id)
     data = await state.get_data()
     
@@ -552,7 +546,6 @@ async def select_product(callback: CallbackQuery, state: FSMContext):
    
     product_id = int(callback.data.replace("d_", ""))
     
-    # Отримуємо category зі state
     data = await state.get_data()
     category = data.get("category")
     
@@ -561,15 +554,15 @@ async def select_product(callback: CallbackQuery, state: FSMContext):
         return
 
     products = await show_something(category)
-    await state.update_data(product_name=product_id)  # ✅ Виправив назву
+    await state.update_data(product_name=product_id)  
 
-    selected = next((p for p in products if p[0] == product_id), None)  # ✅ ID - це перший елемент!
+    selected = next((p for p in products if p[0] == product_id), None)  
     
     if not selected:
         await callback.answer("❌ Товар не знайдено.", show_alert=True)
         return
 
-    row_id, name, price, *_ = selected  # Розпаковуємо
+    row_id, name, price, *_ = selected  
 
     await callback.message.answer("Яке поле хочете відредагувати?(Назва товару / Ціна / Кількість):")
     await state.set_state(Change_info.edit)
